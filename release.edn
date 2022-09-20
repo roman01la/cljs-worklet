@@ -1,4 +1,4 @@
-{:group-id "org.roman01la"
+{:group-id "com.github.roman01la"
  :artifact-id "worklet"
  :version "0.1.0"
  :scm-url "https://github.com/roman01la/cljs-worklet"}
