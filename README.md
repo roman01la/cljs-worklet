@@ -48,3 +48,5 @@ None of ClojureScript standard library is available in native UI thread, calling
 However, it's still possible to execute things in JS thread from native UI thread via `runOnJS` function, [read more about it here](https://docs.swmansion.com/react-native-reanimated/docs/api/miscellaneous/runOnJS/).
 
 The purpose of `worklet.core/fn` macro is to create animation running and user input handling functions that will execute on native UI thread, which is where animations are running and user input is received, so that both animations and input handling is not interrupted by application code running on JS thread.
+
+Given the above limitations `worklet.core/fn` functions should be written without any of Clojure's functions, macros or data structures. Basically you have to write JavaScript using ClojureScript syntax.
