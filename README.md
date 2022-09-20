@@ -4,6 +4,13 @@ _Run ClojureScript functions on a worklet thread in React Native_
 
 [About worklets](https://docs.swmansion.com/react-native-reanimated/docs/2.2.x/worklets/)
 
+![Clojars Project](https://img.shields.io/clojars/v/com.github.roman01la/worklet.svg)
+
+## Installation
+```clojure
+{:deps {com.github.roman01la/worklet {:mvn/version "0.1.0"}}}
+```
+
 ## Usage
 ```clojure
 (ns app.core
