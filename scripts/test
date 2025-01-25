@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+clojure -A:test -M -m cljs.main -t node --main worklet.core-test

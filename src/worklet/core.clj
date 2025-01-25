@@ -1,15 +1,18 @@
 (ns worklet.core
-  (:refer-clojure :exclude [fn defn future])
+  (:refer-clojure :exclude [fn defn])
   (:require [clojure.core :as core]
             [cljs.analyzer :as ana]
             [cljs.compiler :as comp]
             [cljs.env :as env]
             [clojure.string :as str]
-            [clojure.java.io :as io]
             [clojure.walk :as walk])
   (:import (cljs.tagged_literals JSValue)))
 
-(core/defn preprocess-form [env form]
+(core/defn preprocess-form
+  "Rewrites get/set syntax for shared values (useSharedValue)
+  @ref -> ref.value
+  (reset! ref val) -> (set! (.-value ref) val)"
+  [env form]
   (walk/postwalk
     (clojure.core/fn [x]
       (or
@@ -62,22 +65,13 @@
 
 (core/defn form->worklet-fn-str
   "Takes args vector, function body, env and local vars.
-     Returns compiled body as JavaScript string suitable to run as a worklet fn."
+   Returns compiled body as JavaScript string suitable to run as a worklet fn."
   [fn-name args body env locals]
-  (let [closure `(~'js* ~(str "const { " (str/join ", " (set (map first locals))) " } = jsThis._closure"))]
+  (let [closure `(~'js* ~(str "const { " (str/join ", " (set (map first locals))) " } = this.__closure"))]
     (compile-form env
                   `(clojure.core/fn ~fn-name ~args
                      ~closure
                      ~@body))))
-
-(core/defn env->location-str
-  "Takes env and returns location string
-
-     'absolute path (line:column)'"
-  [env]
-  (let [file-path (some-> env :ns :meta :file io/file .getAbsolutePath)]
-    (str (or file-path "<unknown>")
-         " (" (:line env) ":" (:column env) ")")))
 
 (core/defn map->js-obj [m]
   (if-not (map? m)
@@ -88,13 +82,26 @@
                        (apply str))]
       `(~'js* ~(str "{" kvs-str "}") ~@(mapv map->js-obj (vals m))))))
 
+(core/defn seq->js-array [s]
+  (if-not (seq? s)
+    s
+    (let [vals-str (->> s
+                        (mapv (constantly "~{}"))
+                        (interpose ",")
+                        (apply str))]
+      `(~'js* ~(str "[" vals-str "]") ~@s))))
+
+;; https://github.com/software-mansion/react-native-reanimated/blob/main/packages/react-native-reanimated/plugin/src/globals.ts
 (def globals
-  '#{this console performance _setGlobalConsole _chronoNow Date Array ArrayBuffer Int8Array Int16Array Int32Array
-     Uint8Array Uint8ClampedArray Uint16Array Uint32Array Float32Array Float64Array HermesInternal JSON Math
-     Number Object String Symbol undefined null UIManager requestAnimationFrame _WORKLET arguments Boolean parseInt
-     parseFloat Map Set _log _updatePropsPaper _updatePropsFabric _removeShadowNodeFromRegistry RegExp Error global
-     _measure _scrollTo _dispatchCommand _setGestureState _getCurrentTime _eventTimestamp _frameTimestamp isNaN
-     LayoutAnimationRepository _stopObservingProgress _startObservingProgress})
+  '#{globalThis Infinity NaN undefined eval isFinite isNaN parseFloat parseInt decodeURI decodeURIComponent encodeURI
+     encodeURIComponent escape unescape Object Function Boolean Symbol Error AggregateError EvalError RangeError
+     ReferenceError SyntaxError TypeError URIError InternalError Number BigInt Math Date String RegExp Array Int8Array
+     Uint8Array Uint8ClampedArray Int16Array Uint16Array Int32Array Uint32Array BigInt64Array BigUint64Array
+     Float32Array Float64Array Map Set WeakMap WeakSet ArrayBuffer SharedArrayBuffer DataView Atomics JSON WeakRef
+     FinalizationRegistry Iterator AsyncIterator Promise GeneratorFunction AsyncGeneratorFunction Generator
+     AsyncGenerator AsyncFunction Reflect Proxy Intl null this global window console performance
+     queueMicrotask requestAnimationFrame setImmediate arguments HermesInternal _WORKLET ReanimatedError
+     __reanimatedLoggerConfig})
 
 (core/defn known-global-var? [sym]
   (->> (str/split (name sym) #"\.")
@@ -125,7 +132,7 @@
   have access to shared values from outer scope.
 
   (worklet-fn []
-    #js {:transform #js [#js {:translateY (.. position -value)}]})"
+    #js {:transform #js [#js {:translateY @position}]})"
   [fname args & body]
   (let [fn-name (if (symbol? fname)
                   fname
@@ -136,13 +143,12 @@
         body (map (partial preprocess-form &env) body)
         locals (locals->paths (find-free-variables &env `(clojure.core/fn ~fn-name ~args ~@body)))
         closure (locals->closure-map locals)
-        worklet-str (form->worklet-fn-str fn-name args body &env locals)
-        location (env->location-str &env)]
+        worklet-str (form->worklet-fn-str fn-name args body &env locals)]
     `(let [fname# (clojure.core/fn ~fn-name ~args ~@body)]
-       (set! (.-_closure fname#) ~closure)
-       (set! (.-asString fname#) ~worklet-str)
+       (set! (.-__closure fname#) ~closure)
+       (set! (.-__initData fname#) ~(map->js-obj {"code" worklet-str}))
        (set! (.-__workletHash fname#) ~(hash [args body]))
-       (set! (.-__location fname#) ~location)
+       (set! (.-__stackDetails fname#) ~(seq->js-array '[(js/global.Error.) 0 0]))
        fname#)))
 
 (defmacro defn
@@ -151,6 +157,6 @@
   have access to shared values from outer scope.
 
   (w/defn []
-    #js {:transform #js [#js {:translateY (.. position -value)}]})"
+    #js {:transform #js [#js {:translateY @position}]})"
   [fname args & body]
   `(def ~fname (fn ~fname ~args ~@body)))

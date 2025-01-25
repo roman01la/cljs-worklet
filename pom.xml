@@ -1,24 +1,141 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+          
+  
+  
+  
   <modelVersion>4.0.0</modelVersion>
-    
+          
+  
+  
+  
   <groupId>com.github.roman01la</groupId>
-    
+          
+  
+  
+  
   <artifactId>worklet</artifactId>
-    
-  <version>0.1.0</version>
-    
+          
+  
+  
+  
+  <version>0.2.0</version>
+          
+  
+  
+  
   <name>cljs-worklet</name>
+          
+  
+  
+  
+  <licenses>
+                    
     
-  <dependencies/>
     
-  <repositories/>
+    
+    <license>
+                              
+      
+      
+      
+      <name>Eclipse Public License - Version 2.0</name>
+                              
+      
+      
+      
+      <url>https://www.eclipse.org/legal/epl-2.0/</url>
+                            
+    
+    
+    
+    </license>
+                  
+  
+  
+  
+  </licenses>
+          
+  
+  
   
   <scm>
-    <url>https://github.com/roman01la/cljs-worklet</url>
-    <tag>5681cb2aca0b6f801bfc37344f00693210ca4e30</tag>
+                    
+    
+    
+    
     <connection>scm:git:git@github.com:roman01la/cljs-worklet.git</connection>
+                    
+    
+    
+    
     <developerConnection>scm:git:git@github.com:roman01la/cljs-worklet.git</developerConnection>
+                    
+    
+    
+    
+    <tag>bb838129b38c35f3ec3953ee280a9910ba489389</tag>
+                    
+    
+    
+    
+    <url>https://github.com/roman01la/cljs-worklet</url>
+                  
+  
+  
+  
   </scm>
+          
+  
+  
+  
+  <repositories>
+                    
+    
+    
+    
+    <repository>
+                              
+      
+      
+      
+      <id>clojars</id>
+                              
+      
+      
+      
+      <url>https://repo.clojars.org/</url>
+                            
+    
+    
+    
+    </repository>
+                  
+  
+  
+  
+  </repositories>
+          
+  
+  
+  
+  <build>
+                    
+    
+    
+    
+    <sourceDirectory>src</sourceDirectory>
+                  
+  
+  
+  
+  </build>
+        
+  
+  
+  
+  <dependencies/>
+      
+
+
 </project>
