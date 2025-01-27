@@ -1,12 +1,19 @@
 (ns worklet.core
   (:refer-clojure :exclude [fn defn])
-  (:require [clojure.core :as core]
+  (:require [cljs.source-map :as sm]
+            [cljs.vendor.clojure.data.json :as json]
+            [clojure.core :as core]
             [cljs.analyzer :as ana]
             [cljs.compiler :as comp]
             [cljs.env :as env]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk])
-  (:import (cljs.tagged_literals JSValue)))
+  (:import (cljs.tagged_literals JSValue)
+           (java.io File)
+           (java.util.concurrent.atomic AtomicLong)))
+
+(def ^:private goog-debug (with-meta 'goog.DEBUG {:tag 'boolean}))
 
 (core/defn preprocess-form
   "Rewrites get/set syntax for shared values (useSharedValue)
@@ -37,13 +44,25 @@
           :else x)))
     form))
 
+(defn- url-path [^String f]
+  (.getPath (.toURL (.toURI (io/file f)))))
+
 (core/defn compile-form
   "Takes env and ClojureScript form and returns compiled JavaScript"
   [env form]
-  (let [env (assoc env :def-emits-var false)]
-    (env/with-compiler-env env/*compiler*
-                           (with-out-str
-                             (->> form (ana/analyze env) comp/emit)))))
+  (binding [comp/*source-map-data* (atom {:source-map (sorted-map) :gen-line 0})
+            comp/*source-map-data-gen-col* (AtomicLong.)]
+    (let [env (assoc env :def-emits-var false)
+          js-str (env/with-compiler-env env/*compiler*
+                   (with-out-str
+                     (->> form (ana/analyze env) comp/emit)))
+          sm-data (assoc @comp/*source-map-data* :gen-col (.get ^AtomicLong comp/*source-map-data-gen-col*))
+          sm-json (-> (sm/encode* {(url-path ana/*cljs-file*) (:source-map sm-data)}
+                                  {:lines (+ (:gen-line sm-data) 2)
+                                   :file (url-path ana/*cljs-file*)})
+                      (dissoc "file")
+                      json/write-str)]
+      [js-str sm-json])))
 
 (defn- ast->seq [ast]
   (tree-seq :children (clojure.core/fn [{:keys [children] :as ast}]
@@ -82,8 +101,8 @@
                        (apply str))]
       `(~'js* ~(str "{" kvs-str "}") ~@(mapv map->js-obj (vals m))))))
 
-(core/defn seq->js-array [s]
-  (if-not (seq? s)
+(core/defn vec->js-array [s]
+  (if-not (vector? s)
     s
     (let [vals-str (->> s
                         (mapv (constantly "~{}"))
@@ -143,12 +162,16 @@
         body (map (partial preprocess-form &env) body)
         locals (locals->paths (find-free-variables &env `(clojure.core/fn ~fn-name ~args ~@body)))
         closure (locals->closure-map locals)
-        worklet-str (form->worklet-fn-str fn-name args body &env locals)]
+        [worklet-str sm-json] (form->worklet-fn-str fn-name args body &env locals)
+        sm-json `(when ~goog-debug ~sm-json)
+        location `(when ~goog-debug ~ana/*cljs-file*)]
     `(let [fname# (clojure.core/fn ~fn-name ~args ~@body)]
        (set! (.-__closure fname#) ~closure)
-       (set! (.-__initData fname#) ~(map->js-obj {"code" worklet-str}))
+       (set! (.-__initData fname#) ~(map->js-obj {"code" worklet-str
+                                                  "location" location
+                                                  "sourceMap" sm-json}))
        (set! (.-__workletHash fname#) ~(hash [args body]))
-       (set! (.-__stackDetails fname#) ~(seq->js-array '[(js/global.Error.) 0 0]))
+       (set! (.-__stackDetails fname#) ~(vec->js-array '[(js/global.Error.) -2 -27]))
        fname#)))
 
 (defmacro defn
