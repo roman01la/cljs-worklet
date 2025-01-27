@@ -2,7 +2,7 @@
 
 _Run ClojureScript functions on a worklet thread in React Native_
 
-- Compatibility: [React Native Reanimated 3.x](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started)
+- Compatibility: [React Native Reanimated 3.x & 4.x](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started)
 - [About worklets](https://docs.swmansion.com/react-native-reanimated/docs/guides/worklets)
 
 ![Clojars Project](https://img.shields.io/clojars/v/com.github.roman01la/worklet.svg)
